@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#3b5bdb">
+<title>HotelOS - Gestion Hotelera</title>
+<link rel="manifest" href="manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- SPLASH -->
+<div id="splash" class="splash">
+  <div class="splash-bg"></div>
+  <div class="splash-content">
+    <div class="splash-logo-wrap" id="splash-logo">&#127968;</div>
+    <h1 class="splash-title">HotelOS</h1>
+    <p class="splash-sub">SISTEMA DE GESTION HOTELERA</p>
+    <div class="splash-hotel-name hidden" id="splash-hotel-label">Mi Hotel</div>
+    <button class="btn-splash" onclick="checkSetup()">Iniciar Sistema</button>
+  </div>
+</div>
+
+<!-- SETUP -->
+<div id="setup-wizard" class="modal-overlay hidden">
+  <div class="wizard-card">
+    <div class="wizard-header">
+      <div class="wizard-header-icon">&#127968;</div>
+      <h2>Configura tu Hotel</h2>
+      <p>Ingresa los datos basicos para comenzar</p>
+    </div>
+    <div class="form-group">
+      <label>Logo del Hotel</label>
+      <div class="logo-upload-area" id="logo-upload-setup" onclick="document.getElementById('logo-input-setup').click()">
+        <img class="logo-preview-img" id="logo-preview-setup" src="" alt="Logo"/>
+        <div class="logo-upload-label"><strong>&#128193; Haz clic para subir tu logo</strong>PNG, JPG o SVG - Se mostrara en toda la app</div>
+      </div>
+      <input type="file" id="logo-input-setup" accept="image/*" onchange="cargarLogoSetup(this)"/>
+    </div>
+    <div class="form-group"><label>Nombre del Hotel *</label><input type="text" id="setup-nombre" placeholder="Hotel El Dorado"/></div>
+    <div class="form-row">
+      <div class="form-group"><label>Total Habitaciones *</label><input type="number" id="setup-total" placeholder="30" min="1" max="500"/></div>
+      <div class="form-group"><label>Numero de Pisos *</label><input type="number" id="setup-pisos" placeholder="3" min="1" max="20"/></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Tarifa Base / Noche</label><input type="number" id="setup-tarifa" placeholder="50000"/></div>
+      <div class="form-group"><label>Moneda</label>
+        <select id="setup-moneda"><option value="COP">COP - Peso Colombiano</option><option value="USD">USD - Dolar</option><option value="MXN">MXN - Peso Mexicano</option><option value="EUR">EUR - Euro</option></select>
+      </div>
+    </div>
+    <button class="btn-primary full" onclick="completarSetup()">Crear Hotel &rarr;</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app" class="app hidden">
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-top">
+      <div class="hotel-brand">
+        <div class="hotel-logo" id="nav-logo">&#127968;</div>
+        <div>
+          <span class="hotel-name" id="nav-hotel-name">HotelOS</span>
+          <span class="hotel-rooms" id="nav-hotel-rooms">- hab.</span>
+        </div>
+      </div>
+    </div>
+    <ul class="nav-links">
+      <li><a href="#" class="nav-item active" data-view="dashboard" onclick="return showView('dashboard',this)"><span class="nav-icon">&#9670;</span> Dashboard</a></li>
+      <li><a href="#" class="nav-item" data-view="habitaciones" onclick="return showView('habitaciones',this)"><span class="nav-icon">&#9638;</span> Habitaciones</a></li>
+      <li><a href="#" class="nav-item" data-view="checkin" onclick="return showView('checkin',this)"><span class="nav-icon">&#8600;</span> Check-in</a></li>
+      <li><a href="#" class="nav-item" data-view="checkout" onclick="return showView('checkout',this)"><span class="nav-icon">&#8599;</span> Check-out</a></li>
+      <li><a href="#" class="nav-item" data-view="clientes" onclick="return showView('clientes',this)"><span class="nav-icon">&#9689;</span> Clientes</a></li>
+      <li><a href="#" class="nav-item" data-view="turno" onclick="return showView('turno',this)"><span class="nav-icon">&#8635;</span> Turno</a></li>
+      <li><a href="#" class="nav-item" data-view="reportes" onclick="return showView('reportes',this)"><span class="nav-icon">&#9635;</span> Reportes</a></li>
+      <li><a href="#" class="nav-item" data-view="config" onclick="return showView('config',this)"><span class="nav-icon">&#9678;</span> Configuracion</a></li>
+    </ul>
+    <div class="sidebar-bottom">
+      <div class="turno-activo">
+        <span class="turno-dot" id="turno-dot"></span>
+        <span id="turno-empleado-name">Sin turno activo</span>
+      </div>
+    </div>
+  </nav>
+
+  <main class="main-content">
+    <header class="topbar">
+      <button class="menu-toggle" onclick="toggleSidebar()">&#9776;</button>
+      <div class="topbar-center"><span id="view-title" class="view-title">Dashboard</span></div>
+      <div class="topbar-right">
+        <span class="topbar-date" id="topbar-date"></span>
+        <button class="btn-turno" onclick="showView('turno',null)">Gestionar Turno</button>
+      </div>
+    </header>
+
+    <!-- DASHBOARD -->
+    <section id="view-dashboard" class="view active">
+      <div class="stats-grid">
+        <div class="stat-card verde"><div class="stat-label">Disponibles</div><div class="stat-number" id="stat-disponibles">0</div><div class="stat-bar"><div class="stat-fill green" id="bar-disponibles"></div></div></div>
+        <div class="stat-card rojo"><div class="stat-label">Ocupadas</div><div class="stat-number" id="stat-ocupadas">0</div><div class="stat-bar"><div class="stat-fill red" id="bar-ocupadas"></div></div></div>
+        <div class="stat-card amarillo"><div class="stat-label">Por Arreglar</div><div class="stat-number" id="stat-arreglar">0</div><div class="stat-bar"><div class="stat-fill yellow" id="bar-arreglar"></div></div></div>
+        <div class="stat-card accent"><div class="stat-label">Ingreso del Turno</div><div class="stat-number money" id="stat-ingreso">$0</div><div class="stat-sub" id="stat-ingreso-sub">Sin turno activo</div></div>
+      </div>
+      <div class="dashboard-grid">
+        <div class="panel">
+          <div class="panel-header"><h3>Mapa del Hotel - Por Piso</h3><button class="btn-sm" onclick="showView('habitaciones',null)">Ver todas &rarr;</button></div>
+          <div class="mini-grid" id="mini-room-grid"></div>
+          <div class="leyenda">
+            <div class="leyenda-item"><div class="leyenda-dot disponible"></div>Disponible</div>
+            <div class="leyenda-item"><div class="leyenda-dot ocupada"></div>Ocupada</div>
+            <div class="leyenda-item"><div class="leyenda-dot arreglar"></div>Por Arreglar</div>
+            <div class="leyenda-item"><div class="leyenda-dot mantenimiento"></div>Mantenimiento</div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><h3>Actividad Reciente</h3></div>
+          <div class="activity-list" id="activity-list"><p class="empty-state">Sin actividad</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- HABITACIONES -->
+    <section id="view-habitaciones" class="view hidden">
+      <div class="view-controls">
+        <div class="filter-tabs">
+          <button class="filter-btn active" onclick="filterRooms('todas',this)">Todas</button>
+          <button class="filter-btn" onclick="filterRooms('disponible',this)">Disponibles</button>
+          <button class="filter-btn" onclick="filterRooms('ocupada',this)">Ocupadas</button>
+          <button class="filter-btn" onclick="filterRooms('arreglar',this)">Por Arreglar</button>
+        </div>
+        <div class="view-toggle">
+          <button onclick="setRoomView('grid')" class="view-btn active" id="btn-grid">&#9638;</button>
+          <button onclick="setRoomView('list')" class="view-btn" id="btn-list">&#8801;</button>
+        </div>
+      </div>
+      <div id="rooms-container"></div>
+    </section>
+
+    <!-- CHECK-IN -->
+    <section id="view-checkin" class="view hidden">
+      <div class="form-panel">
+        <h2 class="form-title">Nuevo Check-in</h2>
+        <div class="checkin-grid">
+          <div>
+            <p class="form-section-title">Datos del Huesped</p>
+
+            <!-- Busqueda por documento con autocomplete -->
+            <div class="form-group doc-search-group">
+              <label>Documento de Identidad *</label>
+              <div class="doc-search-wrap">
+                <div class="form-row" style="margin-bottom:0">
+                  <div class="form-group" style="margin-bottom:0">
+                    <select id="ci-tipo-doc"><option>CC</option><option>CE</option><option>Pasaporte</option><option>NIT</option></select>
+                  </div>
+                  <div class="form-group" style="margin-bottom:0;position:relative">
+                    <input type="text" id="ci-doc" placeholder="Numero de documento" 
+                      oninput="buscarClientePorDoc()" onblur="ocultarSugerencias()" autocomplete="off"/>
+                    <div id="ci-sugerencias" class="sugerencias-dropdown hidden"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Badge de cliente recurrente -->
+            <div id="ci-cliente-badge" class="hidden" style="margin-bottom:14px"></div>
+
+            <div class="form-group"><label>Nombre Completo *</label><input type="text" id="ci-nombre" placeholder="Juan Perez"/></div>
+            <div class="form-group"><label>Telefono</label><input type="tel" id="ci-tel" placeholder="300 000 0000"/></div>
+            <div class="form-group"><label>Email</label><input type="email" id="ci-email" placeholder="correo@ejemplo.com"/></div>
+            <div class="form-group"><label>Ciudad / Procedencia</label><input type="text" id="ci-ciudad" placeholder="Bogota"/></div>
+          </div>
+          <div>
+            <p class="form-section-title">Detalles de la Estadia</p>
+            <div class="form-group"><label>Habitacion *</label><select id="ci-hab"><option value="">- Seleccionar -</option></select></div>
+            <div class="form-row">
+              <div class="form-group"><label>Fecha Check-in</label><input type="date" id="ci-fecha-in"/></div>
+              <div class="form-group"><label>Fecha Salida Estimada</label><input type="date" id="ci-fecha-out"/></div>
+            </div>
+            <div class="form-row">
+              <div class="form-group"><label>N. Huespedes</label><input type="number" id="ci-huespedes" value="1" min="1" max="10"/></div>
+              <div class="form-group"><label>Tarifa / Noche</label><input type="number" id="ci-tarifa" placeholder="50000"/></div>
+            </div>
+            <div class="form-group"><label>Metodo de Pago</label>
+              <select id="ci-pago"><option value="efectivo">Efectivo</option><option value="transferencia">Transferencia</option><option value="tarjeta">Tarjeta</option></select>
+            </div>
+            <div class="form-group"><label>Observaciones</label><textarea id="ci-obs" placeholder="Solicitudes especiales, notas..."></textarea></div>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn-secondary" onclick="limpiarCheckin()">Limpiar</button>
+          <button class="btn-primary" onclick="realizarCheckin()">Confirmar Check-in &#8600;</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- CHECK-OUT -->
+    <section id="view-checkout" class="view hidden">
+      <div class="form-panel">
+        <h2 class="form-title">Check-out</h2>
+        <div class="checkout-search">
+          <div class="form-group"><label>Buscar por habitacion o nombre del huesped</label>
+            <input type="text" id="co-buscar" placeholder="Ej: 101 o Juan Perez" oninput="buscarCheckout()"/>
+          </div>
+        </div>
+        <div id="checkout-results"></div>
+      </div>
+    </section>
+
+    <!-- CLIENTES -->
+    <section id="view-clientes" class="view hidden">
+      <div class="panel">
+        <div class="panel-header">
+          <h3>Registro de Huespedes</h3>
+          <input type="text" id="cliente-search" placeholder="Buscar..." oninput="buscarClientes()" class="search-input-inline"/>
+        </div>
+        <div id="clientes-table-container"></div>
+      </div>
+    </section>
+
+    <!-- TURNO -->
+    <section id="view-turno" class="view hidden">
+      <div class="turno-container">
+        <div id="turno-inicio-panel">
+          <div class="form-panel">
+            <h2 class="form-title">Iniciar Turno</h2>
+            <div class="form-group"><label>Nombre del Empleado *</label><input type="text" id="t-empleado" placeholder="Tu nombre completo"/></div>
+            <div class="form-row">
+              <div class="form-group"><label>Hora de Entrada</label><input type="time" id="t-hora-in"/></div>
+              <div class="form-group"><label>Base de Caja</label><input type="number" id="t-base" placeholder="200000"/></div>
+            </div>
+            <div class="form-group"><label>Observaciones al recibir turno</label><textarea id="t-obs-in" placeholder="Estado del hotel al recibir, novedades..."></textarea></div>
+            <button class="btn-primary full" onclick="iniciarTurno()">Iniciar Turno &rarr;</button>
+          </div>
+        </div>
+        <div id="turno-activo-panel" class="hidden">
+          <div class="turno-header-card">
+            <div><h2 id="t-nombre-display">Empleado</h2><p id="t-hora-display">Turno desde -</p></div>
+            <div class="turno-totales">
+              <div class="turno-total-item"><span>Base</span><strong id="t-base-display">$0</strong></div>
+              <div class="turno-total-item"><span>Recaudado</span><strong id="t-recaudado-display">$0</strong></div>
+              <div class="turno-total-item"><span>Gastos</span><strong id="t-gastos-display">$0</strong></div>
+              <div class="turno-total-item"><span>Total Caja</span><strong id="t-total-display">$0</strong></div>
+            </div>
+          </div>
+          <div class="turno-sections">
+            <div class="form-panel compact">
+              <h3 class="form-section-title">Registrar Gasto</h3>
+              <div class="form-row">
+                <div class="form-group"><label>Descripcion</label><input type="text" id="gasto-desc" placeholder="Ej: Articulos de aseo"/></div>
+                <div class="form-group"><label>Monto</label><input type="number" id="gasto-monto" placeholder="15000"/></div>
+              </div>
+              <button class="btn-secondary" onclick="agregarGasto()">+ Agregar Gasto</button>
+              <div id="gastos-list"></div>
+            </div>
+            <div class="form-panel compact">
+              <h3 class="form-section-title">Cerrar Turno</h3>
+              <div class="form-group"><label>Empleado que Recibe</label><input type="text" id="t-recibe" placeholder="Nombre del siguiente turno"/></div>
+              <div class="form-group"><label>Observaciones de Entrega</label><textarea id="t-obs-out" placeholder="Novedades, habitaciones con problemas..."></textarea></div>
+              <button class="btn-danger full" onclick="cerrarTurno()">Cerrar y Generar Informe</button>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-header"><h3>Movimientos del Turno</h3></div>
+            <div id="turno-movimientos" class="activity-list"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- REPORTES -->
+    <section id="view-reportes" class="view hidden">
+      <div class="reportes-container">
+        <div class="reporte-controls">
+          <div class="form-row">
+            <div class="form-group"><label>Mes</label>
+              <select id="rep-mes">
+                <option value="0">Enero</option><option value="1">Febrero</option><option value="2">Marzo</option><option value="3">Abril</option><option value="4">Mayo</option><option value="5">Junio</option><option value="6">Julio</option><option value="7">Agosto</option><option value="8">Septiembre</option><option value="9">Octubre</option><option value="10">Noviembre</option><option value="11">Diciembre</option>
+              </select>
+            </div>
+            <div class="form-group"><label>Anio</label><input type="number" id="rep-anio" value="2025"/></div>
+            <div class="form-group align-end"><button class="btn-primary" onclick="generarReporte()">Generar Reporte</button></div>
+          </div>
+        </div>
+        <div id="reporte-output"></div>
+      </div>
+    </section>
+
+    <!-- CONFIGURACION -->
+    <section id="view-config" class="view hidden">
+      <div class="config-grid">
+        <div class="form-panel">
+          <h2 class="form-title">Logo del Hotel</h2>
+          <p class="hint">Este logo aparece en el menu lateral y en la pantalla de inicio.</p>
+          <div class="logo-config-row" onclick="document.getElementById('logo-input-config').click()">
+            <img class="logo-config-thumb" id="logo-config-thumb" src="" alt="Logo actual"/>
+            <div class="logo-placeholder-icon" id="logo-placeholder">&#127968;</div>
+            <div class="logo-config-text"><strong>Cambiar logo del hotel</strong><p>Haz clic para subir una imagen (PNG, JPG o SVG)</p></div>
+          </div>
+          <input type="file" id="logo-input-config" accept="image/*" onchange="cargarLogoConfig(this)"/>
+        </div>
+        <div class="form-panel">
+          <h2 class="form-title">Datos del Hotel</h2>
+          <div class="form-group"><label>Nombre del Hotel</label><input type="text" id="cfg-nombre"/></div>
+          <div class="form-row">
+            <div class="form-group"><label>Total Habitaciones</label><input type="number" id="cfg-total"/></div>
+            <div class="form-group"><label>Numero de Pisos</label><input type="number" id="cfg-pisos"/></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>Tarifa Base / Noche</label><input type="number" id="cfg-tarifa"/></div>
+            <div class="form-group"><label>Moneda</label>
+              <select id="cfg-moneda"><option value="COP">COP</option><option value="USD">USD</option><option value="MXN">MXN</option><option value="EUR">EUR</option></select>
+            </div>
+          </div>
+          <button class="btn-primary" onclick="guardarConfig()">Guardar Cambios</button>
+        </div>
+        <div class="form-panel">
+          <h2 class="form-title">Personalizar Habitaciones</h2>
+          <p class="hint">Define el tipo y bano de cada habitacion. Haz tus cambios y presiona el boton guardar al final.</p>
+          <div id="config-rooms-list" class="config-rooms"></div>
+        </div>
+        <div class="form-panel danger-zone">
+          <h2 class="form-title">Zona de Datos</h2>
+          <p class="hint">Exporta un respaldo o reinicia el sistema.</p>
+          <div class="form-row">
+            <button class="btn-secondary" onclick="exportarDatos()">Exportar JSON</button>
+            <button class="btn-danger" onclick="resetearSistema()">Reiniciar Sistema</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- MODAL -->
+<div id="modal" class="modal-overlay hidden">
+  <div class="modal-card">
+    <button class="modal-close" onclick="closeModal()">&#x2715;</button>
+    <div id="modal-content"></div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast" class="toast hidden"></div>
+
+<script>if(!sessionStorage.getItem('hotelos_token')){window.location.href='index.html'}</script>
+<script src="app.js"></script>
+</body>
+</html>

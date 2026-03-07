@@ -1,0 +1,145 @@
+// ════════════════════════════════════════════════════════════════════
+//  HotelOS — Prisma Schema (PostgreSQL / Supabase)
+// ════════════════════════════════════════════════════════════════════
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─── Hotel ───────────────────────────────────────────────────────────────────
+model Hotel {
+  id                Int          @id @default(autoincrement())
+  codigo            String       @unique @db.VarChar(10)
+  nombre            String       @db.VarChar(120)
+  totalHabitaciones Int
+  pisos             Int
+  tarifaBase        Float        @default(50000)
+  moneda            String       @default("COP") @db.VarChar(3)
+  logo              String?      @db.Text
+  activo            Boolean      @default(true)
+  creadoEn          DateTime     @default(now())
+
+  usuarios          Usuario[]
+  habitaciones      Habitacion[]
+  clientes          Cliente[]
+  checkins          Checkin[]
+  turnos            Turno[]
+
+  @@map("hoteles")
+}
+
+// ─── Usuario ─────────────────────────────────────────────────────────────────
+model Usuario {
+  id           Int       @id @default(autoincrement())
+  hotelId      Int
+  hotel        Hotel     @relation(fields: [hotelId], references: [id])
+  nombre       String    @db.VarChar(100)
+  usuario      String    @db.VarChar(60)
+  passwordHash String    @db.VarChar(255)
+  rol          String    @default("recepcionista") @db.VarChar(20)
+  activo       Boolean   @default(true)
+  ultimoAcceso DateTime?
+  creadoEn     DateTime  @default(now())
+
+  turnos       Turno[]
+
+  @@unique([hotelId, usuario])
+  @@map("usuarios")
+}
+
+// ─── Habitacion ──────────────────────────────────────────────────────────────
+model Habitacion {
+  id          Int       @id @default(autoincrement())
+  hotelId     Int
+  hotel       Hotel     @relation(fields: [hotelId], references: [id])
+  numero      String    @db.VarChar(10)
+  piso        Int
+  tipo        String    @default("Estándar") @db.VarChar(30)
+  bano        String    @default("Privado") @db.VarChar(20)
+  estado      String    @default("disponible") @db.VarChar(20)
+  tarifaNoche Float?
+
+  checkins    Checkin[]
+
+  @@unique([hotelId, numero])
+  @@map("habitaciones")
+}
+
+// ─── Cliente ─────────────────────────────────────────────────────────────────
+model Cliente {
+  id        Int       @id @default(autoincrement())
+  hotelId   Int
+  hotel     Hotel     @relation(fields: [hotelId], references: [id])
+  tipoDoc   String    @default("CC") @db.VarChar(20)
+  documento String    @db.VarChar(30)
+  nombre    String    @db.VarChar(120)
+  telefono  String?   @db.VarChar(20)
+  email     String?   @db.VarChar(100)
+  ciudad    String?   @db.VarChar(80)
+  visitas   Int       @default(0)
+  creadoEn  DateTime  @default(now())
+
+  checkins  Checkin[]
+
+  @@unique([hotelId, documento])
+  @@map("clientes")
+}
+
+// ─── Checkin ─────────────────────────────────────────────────────────────────
+model Checkin {
+  id               Int        @id @default(autoincrement())
+  hotelId          Int
+  hotel            Hotel      @relation(fields: [hotelId], references: [id])
+  habitacionId     Int
+  habitacion       Habitacion @relation(fields: [habitacionId], references: [id])
+  clienteId        Int
+  cliente          Cliente    @relation(fields: [clienteId], references: [id])
+  huespedes        Int        @default(1)
+  fechaIn          DateTime
+  fechaOutEst      DateTime?
+  fechaOutReal     DateTime?
+  tarifaNoche      Float
+  metodoPago       String     @default("efectivo") @db.VarChar(20)
+  observaciones    String?    @db.Text
+  totalPagado      Float      @default(0)
+  estado           String     @default("activo") @db.VarChar(20)
+  recepcionistaIn  String?    @db.VarChar(100)
+  recepcionistaOut String?    @db.VarChar(100)
+  turnoId          Int?
+  turno            Turno?     @relation(fields: [turnoId], references: [id])
+  creadoEn         DateTime   @default(now())
+
+  @@map("checkins")
+}
+
+// ─── Turno ───────────────────────────────────────────────────────────────────
+model Turno {
+  id          Int       @id @default(autoincrement())
+  hotelId     Int
+  hotel       Hotel     @relation(fields: [hotelId], references: [id])
+  usuarioId   Int?
+  usuario     Usuario?  @relation(fields: [usuarioId], references: [id])
+  empleado    String    @db.VarChar(100)
+  horaIn      DateTime  @default(now())
+  horaOut     DateTime?
+  baseCaja    Float     @default(0)
+  recaudado   Float     @default(0)
+  totalGastos Float     @default(0)
+  gastos      Json      @default("[]")
+  movimientos Json      @default("[]")
+  observIn    String?   @db.Text
+  observOut   String?   @db.Text
+  recibeNombre String?  @db.VarChar(100)
+  estado      String    @default("activo") @db.VarChar(20)
+  creadoEn    DateTime  @default(now())
+
+  checkins    Checkin[]
+
+  @@map("turnos")
+}

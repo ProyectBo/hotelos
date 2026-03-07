@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HotelOS — Acceso</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--ink:#0d0d12;--accent:#c8a96e;--muted:#6b6878;--white:#fff;--danger:#d64242;--success:#2da562}
+html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--ink);color:var(--ink)}
+.bg{position:fixed;inset:0;z-index:0;background:radial-gradient(ellipse 80% 60% at 15% 20%,rgba(200,169,110,.18) 0%,transparent 60%),radial-gradient(ellipse 60% 50% at 85% 80%,rgba(200,169,110,.12) 0%,transparent 55%),linear-gradient(160deg,#0d0d12 0%,#1a1825 50%,#0d0d12 100%)}
+.bg-grid{position:fixed;inset:0;z-index:0;opacity:.04;background-image:linear-gradient(rgba(200,169,110,.6) 1px,transparent 1px),linear-gradient(90deg,rgba(200,169,110,.6) 1px,transparent 1px);background-size:48px 48px}
+.auth-wrapper{position:relative;z-index:1;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+.auth-card{background:#fff;border-radius:24px;width:100%;max-width:500px;box-shadow:0 24px 64px rgba(0,0,0,.22);overflow:hidden;animation:slideUp .5s cubic-bezier(.16,1,.3,1) both}
+@keyframes slideUp{from{opacity:0;transform:translateY(32px)}to{opacity:1;transform:none}}
+.card-header{background:linear-gradient(135deg,#0d0d12 0%,#1e1c2e 100%);padding:36px 40px 28px;text-align:center;position:relative;overflow:hidden}
+.card-header::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 50% 120%,rgba(200,169,110,.25),transparent)}
+.logo-mark{font-size:42px;display:block;margin-bottom:10px;filter:drop-shadow(0 4px 16px rgba(200,169,110,.4));position:relative}
+.brand{font-family:'Syne',sans-serif;font-size:30px;font-weight:800;color:#fff;letter-spacing:-.5px;position:relative}
+.brand span{color:var(--accent)}
+.brand-sub{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:rgba(255,255,255,.4);margin-top:4px;position:relative}
+.tab-bar{display:grid;grid-template-columns:1fr 1fr;background:#f0ede8;border-bottom:1px solid #e0dbd2}
+.tab-btn{padding:14px;font-family:'Syne',sans-serif;font-size:13px;font-weight:600;letter-spacing:.5px;border:none;cursor:pointer;background:transparent;color:var(--muted);transition:all .2s}
+.tab-btn.active{background:#fff;color:var(--ink);box-shadow:inset 0 -2px 0 var(--accent)}
+.card-body{padding:32px 40px 36px}
+.tab-panel{display:none}
+.tab-panel.active{display:block;animation:fadeIn .25s ease both}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.form-group{margin-bottom:18px}
+.form-group label{display:block;font-size:12px;font-weight:500;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.form-group input,.form-group select{width:100%;padding:11px 14px;border:1.5px solid #ddd;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:14px;color:var(--ink);background:#fafaf8;transition:border-color .2s,box-shadow .2s;outline:none}
+.form-group input:focus,.form-group select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(200,169,110,.15)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.section-label{font-family:'Syne',sans-serif;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--accent);margin:22px 0 14px;display:flex;align-items:center;gap:8px}
+.section-label::after{content:'';flex:1;height:1px;background:#e8e4dc}
+.btn-primary{width:100%;padding:14px;margin-top:8px;background:linear-gradient(135deg,#c8a96e,#b8924e);color:#fff;border:none;border-radius:12px;font-family:'Syne',sans-serif;font-size:15px;font-weight:700;cursor:pointer;transition:all .2s;letter-spacing:.3px;box-shadow:0 4px 16px rgba(200,169,110,.35)}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 6px 24px rgba(200,169,110,.45)}
+.btn-primary:disabled{opacity:.6;cursor:not-allowed;transform:none}
+.codigo-badge{background:linear-gradient(135deg,#0d0d12,#1e1c2e);color:var(--accent);border-radius:14px;padding:20px 24px;text-align:center;margin-top:20px;display:none}
+.codigo-label{font-size:11px;letter-spacing:2px;color:rgba(255,255,255,.5);text-transform:uppercase;margin-bottom:8px}
+.codigo-value{font-family:'Syne',sans-serif;font-size:36px;font-weight:800;letter-spacing:8px}
+.codigo-hint{font-size:12px;color:rgba(255,255,255,.4);margin-top:8px}
+.alert{padding:12px 16px;border-radius:10px;font-size:13px;margin-bottom:16px;display:none}
+.alert.error{background:#fef2f2;border:1px solid #fca5a5;color:#b91c1c}
+.alert.success{background:#f0fdf4;border:1px solid #86efac;color:#15803d}
+.spinner{width:18px;height:18px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;display:inline-block;vertical-align:middle;margin-right:8px}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media(max-width:520px){.card-body{padding:24px 24px 28px}.form-row{grid-template-columns:1fr}.card-header{padding:28px 24px 20px}}
+</style>
+</head>
+<body>
+<div class="bg"></div>
+<div class="bg-grid"></div>
+<div class="auth-wrapper">
+  <div class="auth-card">
+    <div class="card-header">
+      <span class="logo-mark">🏨</span>
+      <div class="brand">Hotel<span>OS</span></div>
+      <div class="brand-sub">Sistema de Gestión Hotelera</div>
+    </div>
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="switchTab('login')">Iniciar Sesión</button>
+      <button class="tab-btn" onclick="switchTab('registro')">Registrar Hotel</button>
+    </div>
+    <div class="card-body">
+
+      <!-- LOGIN -->
+      <div class="tab-panel active" id="panel-login">
+        <div class="alert" id="login-alert"></div>
+        <div class="form-group">
+          <label>Código del Hotel</label>
+          <input type="text" id="l-codigo" placeholder="EJHOT123" style="text-transform:uppercase" maxlength="10"/>
+        </div>
+        <div class="form-group">
+          <label>Usuario</label>
+          <input type="text" id="l-usuario" placeholder="admin" autocomplete="username"/>
+        </div>
+        <div class="form-group">
+          <label>Contraseña</label>
+          <input type="password" id="l-password" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"/>
+        </div>
+        <button class="btn-primary" id="btn-login" onclick="doLogin()">Entrar al Sistema →</button>
+      </div>
+
+      <!-- REGISTRO -->
+      <div class="tab-panel" id="panel-registro">
+        <div class="alert" id="reg-alert"></div>
+        <div class="section-label">Datos del Hotel</div>
+        <div class="form-group">
+          <label>Nombre del Hotel *</label>
+          <input type="text" id="r-nombre" placeholder="Hotel El Dorado"/>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Total Habitaciones *</label><input type="number" id="r-habs" placeholder="30" min="1" max="500"/></div>
+          <div class="form-group"><label>Número de Pisos *</label><input type="number" id="r-pisos" placeholder="3" min="1" max="20"/></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Tarifa Base / Noche</label><input type="number" id="r-tarifa" placeholder="50000"/></div>
+          <div class="form-group"><label>Moneda</label>
+            <select id="r-moneda">
+              <option value="COP">COP — Peso</option>
+              <option value="USD">USD — Dólar</option>
+              <option value="MXN">MXN — Peso Mx</option>
+              <option value="EUR">EUR — Euro</option>
+            </select>
+          </div>
+        </div>
+        <div class="section-label">Cuenta Administrador</div>
+        <div class="form-group"><label>Nombre completo *</label><input type="text" id="r-admin-nombre" placeholder="Juan García"/></div>
+        <div class="form-row">
+          <div class="form-group"><label>Usuario *</label><input type="text" id="r-admin-user" placeholder="juangarcia"/></div>
+          <div class="form-group"><label>Contraseña *</label><input type="password" id="r-admin-pass" placeholder="mínimo 6 caracteres"/></div>
+        </div>
+        <button class="btn-primary" id="btn-registrar" onclick="doRegistrar()">Crear mi Hotel →</button>
+        <div class="codigo-badge" id="codigo-badge">
+          <div class="codigo-label">Código único de tu Hotel</div>
+          <div class="codigo-value" id="codigo-generado">------</div>
+          <div class="codigo-hint">⚠️ Guarda este código — lo necesitas para iniciar sesión</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+<script>
+const API = window.location.origin;
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach((b,i) => b.classList.toggle('active',(i===0&&tab==='login')||(i===1&&tab==='registro')));
+  document.getElementById('panel-login').classList.toggle('active', tab==='login');
+  document.getElementById('panel-registro').classList.toggle('active', tab==='registro');
+}
+
+function showAlert(id, msg, type='error') {
+  const el = document.getElementById(id);
+  el.className = `alert ${type}`;
+  el.textContent = msg;
+  el.style.display = 'block';
+  if (type==='success') setTimeout(()=>el.style.display='none', 6000);
+}
+
+function setLoading(btnId, loading, text) {
+  const btn = document.getElementById(btnId);
+  btn.disabled = loading;
+  btn.innerHTML = loading ? `<span class="spinner"></span>${text}` : text;
+}
+
+async function doLogin() {
+  const codigo   = document.getElementById('l-codigo').value.trim().toUpperCase();
+  const usuario  = document.getElementById('l-usuario').value.trim();
+  const password = document.getElementById('l-password').value;
+  if (!codigo||!usuario||!password) return showAlert('login-alert','Completa todos los campos.');
+  setLoading('btn-login', true, 'Entrando...');
+  document.getElementById('login-alert').style.display='none';
+  try {
+    const res  = await fetch(`${API}/api/auth/login`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({hotelCodigo:codigo,usuario,password})});
+    const data = await res.json();
+    if (!data.ok) { showAlert('login-alert', data.mensaje||'Credenciales incorrectas.'); setLoading('btn-login',false,'Entrar al Sistema →'); return; }
+    sessionStorage.setItem('hotelos_token',   data.data.token);
+    sessionStorage.setItem('hotelos_usuario', JSON.stringify(data.data.usuario));
+    sessionStorage.setItem('hotelos_hotel',   JSON.stringify(data.data.hotel));
+    window.location.href = 'app.html';
+  } catch {
+    showAlert('login-alert','Error de conexión con el servidor.');
+    setLoading('btn-login',false,'Entrar al Sistema →');
+  }
+}
+
+async function doRegistrar() {
+  const nombre      = document.getElementById('r-nombre').value.trim();
+  const habs        = parseInt(document.getElementById('r-habs').value);
+  const pisos       = parseInt(document.getElementById('r-pisos').value);
+  const tarifa      = parseFloat(document.getElementById('r-tarifa').value)||50000;
+  const moneda      = document.getElementById('r-moneda').value;
+  const adminNombre = document.getElementById('r-admin-nombre').value.trim();
+  const adminUser   = document.getElementById('r-admin-user').value.trim();
+  const adminPass   = document.getElementById('r-admin-pass').value;
+  if (!nombre||!habs||!pisos||!adminNombre||!adminUser||!adminPass) return showAlert('reg-alert','Completa todos los campos obligatorios (*).');
+  if (adminPass.length<6) return showAlert('reg-alert','La contraseña debe tener mínimo 6 caracteres.');
+  setLoading('btn-registrar',true,'Creando hotel...');
+  document.getElementById('reg-alert').style.display='none';
+  try {
+    const res  = await fetch(`${API}/api/auth/registrar-hotel`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nombre,totalHabitaciones:habs,pisos,tarifaBase:tarifa,moneda,adminNombre,adminUsuario:adminUser,adminPassword:adminPass})});
+    const data = await res.json();
+    if (!data.ok) { showAlert('reg-alert',data.mensaje||'Error al registrar.'); setLoading('btn-registrar',false,'Crear mi Hotel →'); return; }
+    document.getElementById('codigo-generado').textContent = data.data.hotel.codigo;
+    document.getElementById('codigo-badge').style.display = 'block';
+    showAlert('reg-alert',`¡Hotel creado! Entrando al sistema en 4 segundos...`,'success');
+    setLoading('btn-registrar',false,'Crear mi Hotel →');
+    sessionStorage.setItem('hotelos_token',   data.data.token);
+    sessionStorage.setItem('hotelos_usuario', JSON.stringify(data.data.admin));
+    sessionStorage.setItem('hotelos_hotel',   JSON.stringify(data.data.hotel));
+    setTimeout(()=>window.location.href='app.html', 4000);
+  } catch {
+    showAlert('reg-alert','Error de conexión.');
+    setLoading('btn-registrar',false,'Crear mi Hotel →');
+  }
+}
+</script>
+</body>
+</html>
