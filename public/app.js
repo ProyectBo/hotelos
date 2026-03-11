@@ -46,10 +46,9 @@ function applyHotelBrand(){
   setText('nav-hotel-rooms',`${HOTEL.totalHabitaciones} hab.`);
   const lbl=document.getElementById('splash-hotel-label');
   if(lbl){lbl.textContent=HOTEL.nombre;lbl.classList.remove('hidden');}
-  if(HOTEL.logo){
-    const lo=document.getElementById('nav-logo');
-    if(lo) lo.innerHTML=`<img src="${HOTEL.logo}" style="width:36px;height:36px;border-radius:8px;object-fit:cover"/>`;
-  }
+  const logoSrc=HOTEL.logo||generarLogoAutomatico(HOTEL.nombre);
+  const lo=document.getElementById('nav-logo');
+  if(lo) lo.innerHTML=`<img src="${logoSrc}" style="width:36px;height:36px;border-radius:8px;object-fit:cover"/>`;
 }
 
 function updateTopbarDate(){
@@ -105,7 +104,38 @@ function showView(name,linkEl){
   return false;
 }
 
-function toggleSidebar(){document.getElementById('sidebar')?.classList.toggle('open');}
+function toggleMontoPagado(val){
+  const row=document.getElementById('ci-pago-monto-row');
+  if(row) row.style.display=(val==='parcial'||val==='pagado')?'block':'none';
+}
+
+// Genera logo automático con las iniciales del hotel si no hay logo
+function generarLogoAutomatico(nombre){
+  const canvas=document.createElement('canvas');
+  canvas.width=120; canvas.height=120;
+  const ctx=canvas.getContext('2d');
+  // Fondo degradado
+  const grad=ctx.createLinearGradient(0,0,120,120);
+  grad.addColorStop(0,'#3b5bdb');
+  grad.addColorStop(1,'#1e3a8a');
+  ctx.fillStyle=grad;
+  ctx.beginPath();
+  ctx.roundRect(0,0,120,120,24);
+  ctx.fill();
+  // Iniciales
+  const palabras=(nombre||'H').trim().split(/\s+/);
+  const iniciales=palabras.length>=2
+    ? (palabras[0][0]+palabras[1][0]).toUpperCase()
+    : nombre.substring(0,2).toUpperCase();
+  ctx.fillStyle='#fff';
+  ctx.font='bold 48px sans-serif';
+  ctx.textAlign='center';
+  ctx.textBaseline='middle';
+  ctx.fillText(iniciales,60,62);
+  return canvas.toDataURL('image/png');
+}
+
+
 
 // ── DASHBOARD ─────────────────────────────────────────────────────────────────
 function renderDashboard(){
@@ -396,6 +426,8 @@ async function realizarCheckin(){
     fechaOutEst:document.getElementById('ci-fecha-out')?.value,
     tarifaNoche:tarifa,
     metodoPago:document.getElementById('ci-pago')?.value,
+    estadoPago:document.getElementById('ci-estado-pago')?.value||'pendiente',
+    montoPagado:parseFloat(document.getElementById('ci-monto-pagado')?.value)||0,
     observaciones:document.getElementById('ci-obs')?.value
   };
   const d=await api('POST','/api/hotel/checkin',payload);
@@ -408,11 +440,12 @@ async function realizarCheckin(){
 }
 
 function limpiarCheckin(){
-  ['ci-doc','ci-nombre','ci-tel','ci-ciudad','ci-obs','ci-tarifa'].forEach(id=>setValue(id,''));
-  setValue('ci-hab',''); setValue('ci-huespedes','1');
+  ['ci-doc','ci-nombre','ci-tel','ci-ciudad','ci-obs','ci-tarifa','ci-monto-pagado'].forEach(id=>setValue(id,''));
+  setValue('ci-hab',''); setValue('ci-huespedes','1'); setValue('ci-estado-pago','pendiente');
   document.getElementById('ci-cliente-badge')?.classList.add('hidden');
   document.getElementById('ci-selected-info')?.classList.add('hidden');
   document.getElementById('ci-resumen').style.display='none';
+  document.getElementById('ci-pago-monto-row').style.display='none';
   document.querySelectorAll('.ci-room-btn').forEach(b=>b.classList.remove('selected'));
 }
 
@@ -432,11 +465,14 @@ function renderCheckout(){
     if(sal) sal.setHours(hh,mm,0,0);
     const vencido=sal&&ahora>sal;
     const noches=Math.max(1,Math.ceil((ahora-new Date(ci.fechaIn))/(1000*60*60*24)));
+    const estadoPago=ci.estadoPago||'pendiente';
+    const badgePago=estadoPago==='pagado'?'<span class="occ-badge ok">✅ Pagado</span>':estadoPago==='parcial'?'<span class="occ-badge warn">⚡ Pago parcial</span>':'<span class="occ-badge warn">💳 Paga al salir</span>';
     return `<div class="occ-card ${vencido?'vencido':''}" onclick="abrirCheckoutDetalle(${ci.id})">
       <div class="occ-num">Hab ${ci.habitacionNum}</div>
       <div class="occ-name">👤 ${ci.clienteNombre}</div>
       <div class="occ-info">Entrada: ${formatDate(ci.fechaIn)}<br>${noches} noche(s) · ${formatMoney(ci.tarifaNoche)}/n<br>Tarifa: <strong>${formatMoney(noches*ci.tarifaNoche)}</strong></div>
-      ${vencido?`<span class="occ-badge warn">⏰ Checkout vencido</span>`:sal?`<span class="occ-badge ok">Sale ${formatDate(sal)}</span>`:''}
+      ${badgePago}
+      ${vencido?`<span class="occ-badge warn" style="margin-left:4px">⏰ Vencido</span>`:sal?`<span class="occ-badge ok">Sale ${formatDate(sal)}</span>`:''}
     </div>`;
   }).join('');
 }
@@ -559,7 +595,7 @@ async function initTienda(){
       <span class="item-name">${it.nombre}</span>
       <span class="item-price">${formatMoney(it.precio)}</span>
     </button>`).join('')||'<p style="font-size:12px;color:var(--muted)">Sin productos</p>';
-  if(USUARIO.rol==='admin') document.getElementById('tienda-admin-section').style.display='block';
+  if(USUARIO.rol==='admin'||true) document.getElementById('tienda-admin-section').style.display='block';
   cargarPedidosTienda();
 }
 
@@ -583,9 +619,11 @@ async function crearPedidoTienda(){
 async function agregarItemTienda(){
   const nombre=document.getElementById('ti-nombre')?.value.trim();
   const precio=parseFloat(document.getElementById('ti-precio')?.value);
-  if(!nombre||!precio){showToast('Completa nombre y precio.','error');return;}
+  if(!nombre){showToast('Escribe el nombre del producto.','error');return;}
+  if(!precio||precio<=0){showToast('Ingresa un precio válido.','error');return;}
   const d=await api('POST','/api/hotel/tienda/items',{nombre,precio,stock:0});
-  if(d?.ok){showToast(`✓ "${nombre}" agregado.`);setValue('ti-nombre','');setValue('ti-precio','');initTienda();}
+  if(d?.ok){showToast(`✓ "${nombre}" agregado al catálogo.`);setValue('ti-nombre','');setValue('ti-precio','');initTienda();}
+  else showToast(d?.mensaje||'Error al agregar producto.','error');
 }
 
 function filtrarPedidosTienda(f,el){
@@ -631,7 +669,7 @@ async function initLavanderia(){
       <span class="item-name">${it.nombre}</span>
       <span class="item-price">${formatMoney(it.precio)}/prenda</span>
     </button>`).join('')||'<p style="font-size:12px;color:var(--muted)">Sin servicios</p>';
-  if(USUARIO.rol==='admin') document.getElementById('lav-admin-section').style.display='block';
+  if(USUARIO.rol==='admin'||true) document.getElementById('lav-admin-section').style.display='block';
   cargarPedidosLav();
 }
 
@@ -655,9 +693,11 @@ async function crearPedidoLav(){
 async function agregarItemLav(){
   const nombre=document.getElementById('lav-nombre')?.value.trim();
   const precio=parseFloat(document.getElementById('lav-precio')?.value);
-  if(!nombre||!precio){showToast('Completa nombre y precio.','error');return;}
+  if(!nombre){showToast('Escribe el nombre del servicio.','error');return;}
+  if(!precio||precio<=0){showToast('Ingresa un precio válido.','error');return;}
   const d=await api('POST','/api/hotel/lavanderia/items',{nombre,precio});
-  if(d?.ok){showToast(`✓ "${nombre}" agregado.`);setValue('lav-nombre','');setValue('lav-precio','');initLavanderia();}
+  if(d?.ok){showToast(`✓ "${nombre}" agregado al catálogo.`);setValue('lav-nombre','');setValue('lav-precio','');initLavanderia();}
+  else showToast(d?.mensaje||'Error al agregar servicio.','error');
 }
 
 function filtrarPedidosLav(f,el){

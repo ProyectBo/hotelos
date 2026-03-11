@@ -136,7 +136,7 @@ router.post('/checkin', async (req, res) => {
     const {
       habitacionNum, clienteDoc, clienteNombre, clienteTel, clienteEmail,
       clienteCiudad, tipoDoc, huespedes, fechaIn, fechaOutEst,
-      tarifaNoche, metodoPago, observaciones
+      tarifaNoche, metodoPago, estadoPago, montoPagado, observaciones
     } = req.body;
 
     if (!habitacionNum || !clienteDoc || !clienteNombre || !tarifaNoche)
@@ -161,7 +161,8 @@ router.post('/checkin', async (req, res) => {
           huespedes: parseInt(huespedes)||1, fechaIn: new Date(fechaIn),
           fechaOutEst: fechaOutEst ? new Date(fechaOutEst) : null,
           tarifaNoche: parseFloat(tarifaNoche), metodoPago: metodoPago||'efectivo',
-          observaciones: observaciones||'', recepcionistaIn: req.usuario.nombre,
+          observaciones: `[Pago: ${estadoPago||'pendiente'}${montoPagado?` · Recibido: ${montoPagado}`:''}] ${observaciones||''}`.trim(),
+          recepcionistaIn: req.usuario.nombre,
           turnoId: turno?.id||null
         }
       });
@@ -397,15 +398,16 @@ router.get('/tienda/items', async (req, res) => {
   } catch { res.status(500).json({ ok: false }); }
 });
 
-router.post('/tienda/items', soloAdmin, async (req, res) => {
+router.post('/tienda/items', async (req, res) => {
   try {
     const { nombre, precio, stock } = req.body;
+    if (!nombre || !precio) return res.status(400).json({ ok: false, mensaje: 'Nombre y precio requeridos.' });
     const item = await prisma.tiendaItem.create({ data: { hotelId: hid(req), nombre, precio: parseFloat(precio), stock: parseInt(stock)||0 } });
     res.json({ ok: true, data: item });
-  } catch { res.status(500).json({ ok: false }); }
+  } catch (err) { console.error(err); res.status(500).json({ ok: false, mensaje: 'Error al crear item.' }); }
 });
 
-router.put('/tienda/items/:id', soloAdmin, async (req, res) => {
+router.put('/tienda/items/:id', async (req, res) => {
   try {
     const { nombre, precio, stock, activo } = req.body;
     const data = {};
@@ -466,15 +468,16 @@ router.get('/lavanderia/items', async (req, res) => {
   } catch { res.status(500).json({ ok: false }); }
 });
 
-router.post('/lavanderia/items', soloAdmin, async (req, res) => {
+router.post('/lavanderia/items', async (req, res) => {
   try {
     const { nombre, precio } = req.body;
+    if (!nombre || !precio) return res.status(400).json({ ok: false, mensaje: 'Nombre y precio requeridos.' });
     const item = await prisma.lavanderiaItem.create({ data: { hotelId: hid(req), nombre, precio: parseFloat(precio) } });
     res.json({ ok: true, data: item });
-  } catch { res.status(500).json({ ok: false }); }
+  } catch (err) { console.error(err); res.status(500).json({ ok: false, mensaje: 'Error al crear item.' }); }
 });
 
-router.put('/lavanderia/items/:id', soloAdmin, async (req, res) => {
+router.put('/lavanderia/items/:id', async (req, res) => {
   try {
     const { nombre, precio, activo } = req.body;
     const data = {};

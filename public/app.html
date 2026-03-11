@@ -282,10 +282,25 @@
             <div class="form-group"><label>Método de Pago</label>
               <select id="ci-pago"><option value="efectivo">Efectivo</option><option value="transferencia">Transferencia</option><option value="tarjeta">Tarjeta</option></select>
             </div>
-            <div id="ci-resumen" style="background:#f8f7f5;border-radius:10px;padding:10px 14px;font-size:12px;margin-bottom:10px;display:none">
-              <strong id="ci-resumen-noches">—</strong> noches · Total estimado: <strong id="ci-resumen-total" style="color:var(--accent)">—</strong>
+            <div class="form-group">
+              <label>Estado del Pago</label>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+                <select id="ci-estado-pago" onchange="toggleMontoPagado(this.value)" style="padding:9px 7px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px">
+                  <option value="pendiente">💳 Paga al salir</option>
+                  <option value="parcial">⚡ Pago parcial</option>
+                  <option value="pagado">✅ Pagó completo</option>
+                </select>
+                <input type="number" id="ci-monto-pagado" placeholder="Monto recibido" style="padding:9px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;display:none" id="ci-pago-monto-row"/>
+              </div>
+            </div>
+            <div id="ci-pago-monto-row" style="display:none" class="form-group">
+              <label>Monto recibido</label>
+              <input type="number" id="ci-monto-pagado" placeholder="Ej: 50000"/>
             </div>
             <div class="form-group"><label>Observaciones</label><textarea id="ci-obs" placeholder="Notas..." rows="2"></textarea></div>
+            <div id="ci-resumen" style="background:#f8f7f5;border-radius:10px;padding:10px 14px;font-size:12px;margin-top:6px;display:none">
+              <strong id="ci-resumen-noches">—</strong> noches · Total: <strong id="ci-resumen-total" style="color:var(--accent)">—</strong>
+            </div>
           </div>
         </div>
         <div class="form-actions">
@@ -328,7 +343,7 @@
               <button class="btn-primary" style="font-size:13px" onclick="crearPedidoTienda()">Registrar</button>
             </div>
           </div>
-          <div id="tienda-admin-section" style="margin-top:16px;padding-top:14px;border-top:1px solid #f0ede8;display:none">
+          <div id="tienda-admin-section" style="margin-top:16px;padding-top:14px;border-top:1px solid #f0ede8">
             <p style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:8px">+ Agregar Producto</p>
             <input type="text" id="ti-nombre" placeholder="Nombre producto" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;margin-bottom:6px"/>
             <input type="number" id="ti-precio" placeholder="Precio" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;margin-bottom:6px"/>
@@ -363,7 +378,7 @@
               <button class="btn-primary" style="font-size:13px" onclick="crearPedidoLav()">Registrar</button>
             </div>
           </div>
-          <div id="lav-admin-section" style="margin-top:16px;padding-top:14px;border-top:1px solid #f0ede8;display:none">
+          <div id="lav-admin-section" style="margin-top:16px;padding-top:14px;border-top:1px solid #f0ede8">
             <p style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:8px">+ Agregar Servicio</p>
             <input type="text" id="lav-nombre" placeholder="Nombre (ej: Camisa)" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;margin-bottom:6px"/>
             <input type="number" id="lav-precio" placeholder="Precio" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:13px;margin-bottom:6px"/>
