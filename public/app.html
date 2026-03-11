@@ -2,9 +2,15 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>HotelOS</title>
-<link rel="manifest" href="manifest.json">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#3b5bdb">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="HotelOS">
+<link rel="apple-touch-icon" href="/icon-192.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
@@ -180,6 +186,9 @@
       <li><a href="#" class="nav-item"         data-view="config"       onclick="return showView('config',this)">&#9881; Config</a></li>
     </ul>
     <div class="sidebar-bottom">
+      <button id="btn-instalar-pwa" onclick="instalarPWA()" style="display:none;align-items:center;gap:8px;width:100%;padding:10px 12px;background:#3b5bdb;color:#fff;border:none;border-radius:10px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;margin-bottom:8px">
+        📲 Instalar App
+      </button>
       <div class="turno-activo">
         <span class="turno-dot" id="turno-dot"></span>
         <span id="turno-empleado-name">Sin turno activo</span>
@@ -543,5 +552,22 @@
 <div id="toast" class="toast hidden"></div>
 <script>if(!sessionStorage.getItem("hotelos_token")){window.location.href="index.html"}</script>
 <script src="app.js"></script>
+<script>
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js'));
+}
+// Banner instalar PWA
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt',e=>{
+  e.preventDefault(); deferredPrompt=e;
+  const btn=document.getElementById('btn-instalar-pwa');
+  if(btn) btn.style.display='flex';
+});
+function instalarPWA(){
+  if(!deferredPrompt) return;
+  deferredPrompt.prompt();
+  deferredPrompt.userChoice.then(()=>{deferredPrompt=null;document.getElementById('btn-instalar-pwa').style.display='none';});
+}
+</script>
 </body>
 </html>

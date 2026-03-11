@@ -239,11 +239,13 @@ async function openRoomModal(numero){
     const [hh,mm]=hora.split(':').map(Number);
     const sal=new Date(ci.fechaOutEst); sal.setHours(hh,mm,0,0);
     const ahora=new Date();
-    if(sal<ahora){
+    const horasDesdeIngreso=(ahora-new Date(ci.fechaIn))/3600000;
+    // Solo mostrar alerta si ya pasó la hora de checkout Y llevó al menos 12h en el hotel
+    if(sal<ahora && horasDesdeIngreso>12){
       const extra=ahora-sal;
       const hs=Math.floor(extra/3600000);
       alertaHora=`<div style="background:#fef2f2;border:1px solid #d64242;border-radius:8px;padding:10px;margin:10px 0;font-size:12px">⏰ <strong>Check-out vencido hace ${hs}h ${Math.floor((extra%3600000)/60000)}min</strong></div>`;
-    } else {
+    } else if(sal>ahora){
       alertaHora=`<div style="background:#e8f5ee;border:1px solid #2da562;border-radius:8px;padding:8px 10px;margin:10px 0;font-size:12px">✓ Sale: ${formatDate(sal)} a las ${hora}</div>`;
     }
   }
@@ -463,16 +465,19 @@ function renderCheckout(){
   grid.innerHTML=state.checkins.map(ci=>{
     const sal=ci.fechaOutEst?new Date(ci.fechaOutEst):null;
     if(sal) sal.setHours(hh,mm,0,0);
-    const vencido=sal&&ahora>sal;
+    const horasDesdeIngreso=(ahora-new Date(ci.fechaIn))/3600000;
+    const vencido=sal&&ahora>sal&&horasDesdeIngreso>12;
     const noches=Math.max(1,Math.ceil((ahora-new Date(ci.fechaIn))/(1000*60*60*24)));
     const estadoPago=ci.estadoPago||'pendiente';
     const badgePago=estadoPago==='pagado'?'<span class="occ-badge ok">✅ Pagado</span>':estadoPago==='parcial'?'<span class="occ-badge warn">⚡ Pago parcial</span>':'<span class="occ-badge warn">💳 Paga al salir</span>';
     return `<div class="occ-card ${vencido?'vencido':''}" onclick="abrirCheckoutDetalle(${ci.id})">
       <div class="occ-num">Hab ${ci.habitacionNum}</div>
       <div class="occ-name">👤 ${ci.clienteNombre}</div>
-      <div class="occ-info">Entrada: ${formatDate(ci.fechaIn)}<br>${noches} noche(s) · ${formatMoney(ci.tarifaNoche)}/n<br>Tarifa: <strong>${formatMoney(noches*ci.tarifaNoche)}</strong></div>
-      ${badgePago}
-      ${vencido?`<span class="occ-badge warn" style="margin-left:4px">⏰ Vencido</span>`:sal?`<span class="occ-badge ok">Sale ${formatDate(sal)}</span>`:''}
+      <div class="occ-info">Entrada: ${formatDate(ci.fechaIn)}<br>${noches} noche(s) · ${formatMoney(ci.tarifaNoche)}/n<br>Total: <strong>${formatMoney(noches*ci.tarifaNoche)}</strong></div>
+      <div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap">
+        ${badgePago}
+        ${vencido?`<span class="occ-badge warn">⏰ Vencido</span>`:sal?`<span class="occ-badge ok">Sale ${formatDate(sal)}</span>`:''}
+      </div>
     </div>`;
   }).join('');
 }
@@ -942,7 +947,12 @@ function renderConfigRooms(){
   const el=document.getElementById('config-rooms-list'); if(!el) return;
   const tipos=['Estándar','Sencilla','Doble','Triple','Suite','Junior Suite','Familiar','Ejecutiva'];
   const banos=['Privado','Compartido','Sin baño'];
-  el.innerHTML=state.habitaciones.map(h=>`
+  // Ordenar habitaciones numéricamente por número
+  const sorted=[...state.habitaciones].sort((a,b)=>{
+    const na=parseInt(a.numero)||0, nb=parseInt(b.numero)||0;
+    return na-nb;
+  });
+  el.innerHTML=sorted.map(h=>`
     <div class="config-room-item">
       <strong>Hab ${h.numero}</strong>
       <select onchange="updateRoomConfig('${h.numero}','tipo',this.value)">
