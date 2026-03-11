@@ -114,18 +114,29 @@ router.get('/clientes/:id/historial', async (req, res) => {
       include: { habitacion: true },
       orderBy: { fechaIn: 'desc' }
     });
-    const pedidosTienda = await prisma.pedidoTienda.findMany({
-      where: { hotelId: hid(req), clienteId },
-      include: { item: true },
-      orderBy: { creadoEn: 'desc' }
-    });
-    const pedidosLav = await prisma.pedidoLavanderia.findMany({
-      where: { hotelId: hid(req), clienteId },
-      include: { item: true },
-      orderBy: { creadoEn: 'desc' }
-    });
+
+    // Tienda y lavandería: tolerante si las tablas no existen aún
+    let pedidosTienda = [], pedidosLav = [];
+    try {
+      pedidosTienda = await prisma.pedidoTienda.findMany({
+        where: { hotelId: hid(req), clienteId },
+        include: { item: true },
+        orderBy: { creadoEn: 'desc' }
+      });
+    } catch {}
+    try {
+      pedidosLav = await prisma.pedidoLavanderia.findMany({
+        where: { hotelId: hid(req), clienteId },
+        include: { item: true },
+        orderBy: { creadoEn: 'desc' }
+      });
+    } catch {}
+
     res.json({ ok: true, data: { checkins, pedidosTienda, pedidosLav } });
-  } catch { res.status(500).json({ ok: false, mensaje: 'Error.' }); }
+  } catch (err) {
+    console.error('Historial error:', err);
+    res.status(500).json({ ok: false, mensaje: 'Error al obtener historial.' });
+  }
 });
 
 // ══════════════════════════════════════════════════════════════════════════════

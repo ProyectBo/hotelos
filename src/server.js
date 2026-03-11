@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors    = require('cors');
 const path    = require('path');
+const autoSetup = require('./setup');
 
 const app = express();
 
@@ -29,7 +30,8 @@ app.get('*', (req, res) => {
 
 // ── Start ─────────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`🏨 HotelOS corriendo en puerto ${PORT}`);
   console.log(`🗄️  Base de datos: Supabase (PostgreSQL)`);
+  await autoSetup();
 });

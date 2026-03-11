@@ -73,8 +73,9 @@ function checkCheckoutTimes(){
   const ahora=new Date();
   state.checkins.forEach(ci=>{
     if(!ci.fechaOutEst) return;
-    const sal=new Date(ci.fechaOutEst); sal.setHours(hh,mm,0,0);
-    const diff=sal-ahora;
+    const sal=new Date(ci.fechaOutEst);
+    const salCorr=new Date(sal.getFullYear(),sal.getMonth(),sal.getDate(),hh,mm,0,0);
+    const diff=salCorr-ahora;
     if(diff>0&&diff<30*60*1000) showToast(`⏰ Hab ${ci.habitacionNum} — ${ci.clienteNombre} sale en ${Math.round(diff/60000)}min`,'warning');
   });
 }
@@ -237,16 +238,21 @@ async function openRoomModal(numero){
   if(ci?.fechaOutEst){
     const hora=HOTEL.checkoutHora||'13:00';
     const [hh,mm]=hora.split(':').map(Number);
-    const sal=new Date(ci.fechaOutEst); sal.setHours(hh,mm,0,0);
+    // Fecha de salida: tomar el DATE de fechaOutEst y poner la hora configurada
+    const fechaSalida=new Date(ci.fechaOutEst);
+    const sal=new Date(fechaSalida.getFullYear(),fechaSalida.getMonth(),fechaSalida.getDate(),hh,mm,0,0);
     const ahora=new Date();
-    const horasDesdeIngreso=(ahora-new Date(ci.fechaIn))/3600000;
-    // Solo mostrar alerta si ya pasó la hora de checkout Y llevó al menos 12h en el hotel
-    if(sal<ahora && horasDesdeIngreso>12){
+    if(sal<ahora){
       const extra=ahora-sal;
       const hs=Math.floor(extra/3600000);
-      alertaHora=`<div style="background:#fef2f2;border:1px solid #d64242;border-radius:8px;padding:10px;margin:10px 0;font-size:12px">⏰ <strong>Check-out vencido hace ${hs}h ${Math.floor((extra%3600000)/60000)}min</strong></div>`;
-    } else if(sal>ahora){
-      alertaHora=`<div style="background:#e8f5ee;border:1px solid #2da562;border-radius:8px;padding:8px 10px;margin:10px 0;font-size:12px">✓ Sale: ${formatDate(sal)} a las ${hora}</div>`;
+      const mins=Math.floor((extra%3600000)/60000);
+      alertaHora=`<div style="background:#fef2f2;border:1px solid #d64242;border-radius:8px;padding:10px;margin:10px 0;font-size:12px">⏰ <strong>Check-out vencido hace ${hs}h ${mins}min</strong> · Hora límite: ${hora}</div>`;
+    } else {
+      const diffMs=sal-ahora;
+      const diffHs=Math.floor(diffMs/3600000);
+      const diffMins=Math.floor((diffMs%3600000)/60000);
+      const proximidad=diffHs<2?` · <strong style="color:#e07b00">Sale en ${diffHs}h ${diffMins}min</strong>`:'';
+      alertaHora=`<div style="background:#e8f5ee;border:1px solid #2da562;border-radius:8px;padding:8px 10px;margin:10px 0;font-size:12px">✓ Sale el ${formatDate(sal)} a las ${hora}${proximidad}</div>`;
     }
   }
 
@@ -463,10 +469,8 @@ function renderCheckout(){
   const [hh,mm]=hora.split(':').map(Number);
   const ahora=new Date();
   grid.innerHTML=state.checkins.map(ci=>{
-    const sal=ci.fechaOutEst?new Date(ci.fechaOutEst):null;
-    if(sal) sal.setHours(hh,mm,0,0);
-    const horasDesdeIngreso=(ahora-new Date(ci.fechaIn))/3600000;
-    const vencido=sal&&ahora>sal&&horasDesdeIngreso>12;
+    const sal=ci.fechaOutEst?(()=>{const fd=new Date(ci.fechaOutEst);return new Date(fd.getFullYear(),fd.getMonth(),fd.getDate(),hh,mm,0,0);})():null;
+    const vencido=sal&&ahora>sal;
     const noches=Math.max(1,Math.ceil((ahora-new Date(ci.fechaIn))/(1000*60*60*24)));
     const estadoPago=ci.estadoPago||'pendiente';
     const badgePago=estadoPago==='pagado'?'<span class="occ-badge ok">✅ Pagado</span>':estadoPago==='parcial'?'<span class="occ-badge warn">⚡ Pago parcial</span>':'<span class="occ-badge warn">💳 Paga al salir</span>';
@@ -487,8 +491,8 @@ function abrirCheckoutDetalle(checkinId){
   const hora=HOTEL.checkoutHora||'13:00';
   const [hh,mm]=hora.split(':').map(Number);
   const ahora=new Date();
-  const sal=ci.fechaOutEst?new Date(ci.fechaOutEst):null;
-  if(sal) sal.setHours(hh,mm,0,0);
+  const sal=ci.fechaOutEst?(()=>{const fd=new Date(ci.fechaOutEst);return new Date(fd.getFullYear(),fd.getMonth(),fd.getDate(),hh,mm,0,0);})():null;
+  if(sal) {/* sal ya tiene fecha+hora correcta */}
   const noches=Math.max(1,Math.ceil((ahora-new Date(ci.fechaIn))/(1000*60*60*24)));
   const totalBase=noches*ci.tarifaNoche;
   let horasExtra=0,cargoSug=0;
@@ -816,39 +820,47 @@ async function cerrarTurno(){
   const d=await api('POST','/api/hotel/turno/cerrar',{recibeNombre:rec,observOut:obs});
   if(d?.ok){
     const t=d.data; const r=d.data.resumenHabs||{};
+    // Capturar deudores ANTES de limpiar estado
+    const deudores=[...state.checkins];
     state.turnoActivo=null; renderTurnoStatus(); renderTurnoView(); renderDashboard();
     showToast('Turno cerrado.');
+    const deudoresLineas=deudores.length
+      ? deudores.map(ci=>`  · Hab ${ci.habitacionNum} - ${ci.clienteNombre} | Tarifa: ${formatMoney(ci.tarifaNoche)}/n`).join('\n')
+      : '  Ninguno';
     const w=window.open('','_blank');
-    if(w){w.document.write(`<pre style="font-family:monospace;padding:28px;font-size:13px;max-width:560px;margin:auto;line-height:1.7">
-┌─────────────────────────────────────────────┐
-│            ENTREGA DE TURNO                │
-│         ${HOTEL.nombre.toUpperCase().padEnd(30)}  │
-└─────────────────────────────────────────────┘
+    if(w){w.document.write(`<pre style="font-family:monospace;padding:28px;font-size:13px;max-width:580px;margin:auto;line-height:1.8;white-space:pre">
+╔══════════════════════════════════════════════╗
+║           ENTREGA DE TURNO                   ║
+║  ${(HOTEL.nombre||'').toUpperCase().substring(0,42).padEnd(42,' ')}  ║
+╚══════════════════════════════════════════════╝
 
 Empleado   : ${t.empleado}
-Inicio     : ${formatDate(t.horaIn)} a las ${formatTime(t.horaIn)}
-Cierre     : ${formatDate(t.horaOut)} a las ${formatTime(t.horaOut)}
-Recibe     : ${t.recibeNombre||'—'}
+Inicio     : ${formatDate(t.horaIn)} ${formatTime(t.horaIn)}
+Cierre     : ${formatDate(t.horaOut)} ${formatTime(t.horaOut)}
+Recibe     : ${t.recibeNombre||'— (sin registrar)'}
 
-━━━━━ RESUMEN DE CAJA ━━━━━━━━━━━━━━━━━━━━━━
-Base Caja  : ${formatMoney(t.baseCaja||0)}
-Recaudado  : ${formatMoney(t.recaudado||0)}
-Gastos     : ${formatMoney(t.totalGastos||0)}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-TOTAL CAJA : ${formatMoney((t.baseCaja||0)+(t.recaudado||0)-(t.totalGastos||0))}
+━━━ RESUMEN DE CAJA ━━━━━━━━━━━━━━━━━━━━━━━━━
+Base Caja      : ${formatMoney(t.baseCaja||0)}
+Recaudado      : ${formatMoney(t.recaudado||0)}
+Gastos         : ${formatMoney(t.totalGastos||0)}
+─────────────────────────────────────────────
+TOTAL EN CAJA  : ${formatMoney((t.baseCaja||0)+(t.recaudado||0)-(t.totalGastos||0))}
 
-━━━━━ ESTADO HABITACIONES ━━━━━━━━━━━━━━━━━
-Disponibles   : ${r.disponibles||0}
-Ocupadas      : ${r.ocupadas||0}
-Por arreglar  : ${r.arreglar||0}
-Mantenimiento : ${r.mantenimiento||0}
+━━━ ESTADO HABITACIONES ━━━━━━━━━━━━━━━━━━━━
+✅ Disponibles   : ${r.disponibles||0}
+🔴 Ocupadas      : ${r.ocupadas||0}
+🧹 Por arreglar  : ${r.arreglar||0}
+🔧 Mantenimiento : ${r.mantenimiento||0}
 ${r.detalle?.length?'\nDetalle:\n'+r.detalle.map(h=>`  Hab ${h.num}: ${h.estado}`).join('\n'):''}
 
-━━━━━ GASTOS DEL TURNO ━━━━━━━━━━━━━━━━━━━
+━━━ HUÉSPEDES ACTIVOS (PENDIENTES DE PAGO) ━
+${deudoresLineas}
+
+━━━ GASTOS DEL TURNO ━━━━━━━━━━━━━━━━━━━━━━
 ${(Array.isArray(t.gastos)?t.gastos:[]).map(g=>`  · ${g.descripcion}: ${formatMoney(g.monto)}`).join('\n')||'  Ninguno'}
 
 Novedades: ${t.observOut||'—'}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+─────────────────────────────────────────────
 HotelOS · ${new Date().toLocaleString('es-CO')}
 </pre>`);w.print();}
   }
